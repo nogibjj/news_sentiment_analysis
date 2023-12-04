@@ -93,7 +93,7 @@ def split_train_test(
 def generate_data_word2vec(df: pd.DataFrame) -> tuple[FloatArray, FloatArray]:
     """Generate training and testing data with word2vec."""
     # load pre-trained word2vec model
-    google_news = gensim.models.KeyedVectors.load("word2vec-google-news-300.model")
+    # google_news = gensim.models.KeyedVectors.load("word2vec-google-news-300.model")
     X: FloatArray = np.array(
         [
             # sum the token embeddings for each sentence. If word is not in the model, return embedding of ['UNK']
