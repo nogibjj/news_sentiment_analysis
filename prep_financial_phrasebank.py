@@ -35,20 +35,77 @@ def import_data(split):
     return download_parquet("financial_phrasebank", split)
 
 
+from nltk.corpus import wordnet
+
+
+def Negation(sentence):
+    """
+    Input: Tokenized sentence (List of words)
+    Output: Tokenized sentence with negation handled (List of words)
+    """
+    temp = int(0)
+    for i in range(len(sentence)):
+        if sentence[i - 1] in ["not", "n't"]:
+            antonyms = []
+            for syn in wordnet.synsets(sentence[i]):
+                syns = wordnet.synsets(sentence[i])
+                w1 = syns[0].name()
+                temp = 0
+                for l in syn.lemmas():
+                    if l.antonyms():
+                        antonyms.append(l.antonyms()[0].name())
+                max_dissimilarity = 0
+                for ant in antonyms:
+                    syns = wordnet.synsets(ant)
+                    w2 = syns[0].name()
+                    syns = wordnet.synsets(sentence[i])
+                    w1 = syns[0].name()
+                    word1 = wordnet.synset(w1)
+                    word2 = wordnet.synset(w2)
+                    if isinstance(word1.wup_similarity(word2), float) or isinstance(
+                        word1.wup_similarity(word2), int
+                    ):
+                        temp = 1 - word1.wup_similarity(word2)
+                    if temp > max_dissimilarity:
+                        max_dissimilarity = temp
+                        antonym_max = ant
+                        sentence[i] = antonym_max
+                        sentence[i - 1] = ""
+    while "" in sentence:
+        sentence.remove("")
+    return sentence
+
+
 def clean_text(text):
-    """Clean text."""
+    """Clean text incorporating Negation handling and stopwords."""
     # turn to lowercase
     text = text.lower()
-    # split into sentences
-    sentences = nltk.sent_tokenize(text)
+    # word tokenization
+    text = nltk.word_tokenize(text)
+    # negation handling
+    text = Negation(text)
     # remove punctuation
-    sentences = [nltk.word_tokenize(sentence) for _, sentence in enumerate(sentences)]
-    sentences = [
-        [word for word in sentence if word.isalnum()]
-        for _, sentence in enumerate(sentences)
-    ]
-    sentences = list(filter(None, sentences))
-    return sentences
+    text = [word for word in text if word.isalnum()]
+    # remove stopwords
+    stopwords = nltk.corpus.stopwords.words("english")
+    text = [word for word in text if word not in stopwords]
+    return text
+
+
+# def clean_text(text):
+#     """Clean text."""
+#     # turn to lowercase
+#     text = text.lower()
+#     # split into sentences
+#     sentences = nltk.sent_tokenize(text)
+#     # remove punctuation
+#     sentences = [nltk.word_tokenize(sentence) for _, sentence in enumerate(sentences)]
+#     sentences = [
+#         [word for word in sentence if word.isalnum()]
+#         for _, sentence in enumerate(sentences)
+#     ]
+#     sentences = list(filter(None, sentences))
+#     return sentences
 
 
 def tokenize_financial_phrasebank(df):
@@ -147,3 +204,136 @@ def run_experiment() -> None:
     clf = LogisticRegression(random_state=0, max_iter=1000).fit(X_train, y_train)
     print("word2vec (train):", clf.score(X_train, y_train))
     print("word2vec (test):", clf.score(X_test, y_test))
+
+
+def experiment_gridSearchCV():
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.linear_model import LogisticRegression
+
+    param_grid = {
+        "C": [0.1, 1, 10],
+        "penalty": ["l1", "l2"],
+        "solver": ["newton-cg", "lbfgs", "saga"],
+    }
+    # prepare training and testing data
+    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    clf = LogisticRegression(random_state=0, max_iter=1000)
+
+    grid_search = GridSearchCV(clf, param_grid, cv=5)
+    grid_search.fit(X_train, y_train)
+    print("Best Score: ", grid_search.best_score_)
+    print("Best Params: ", grid_search.best_params_)
+
+
+def RandomForest_experiment():
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn import metrics
+
+    # prepare training and testing data
+    X_train, y_train, X_test, y_test = aggregate_all_splits()
+
+    rfc = RandomForestClassifier(random_state=0, max_depth=10, n_estimators=120).fit(
+        X_train, y_train
+    )
+    print("word2vec (train):", rfc.score(X_train, y_train))
+    print("word2vec (test):", rfc.score(X_test, y_test))
+
+
+def GradientBoost_experiment():
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn import metrics
+
+    # prepare training and testing data
+    X_train, y_train, X_test, y_test = aggregate_all_splits()
+
+    gbc = GradientBoostingClassifier(
+        random_state=0, max_depth=4, n_estimators=30, learning_rate=0.3
+    ).fit(X_train, y_train)
+    print("word2vec (train):", gbc.score(X_train, y_train))
+    print("word2vec (test):", gbc.score(X_test, y_test))
+
+
+def MLP_experiment():
+    from sklearn.neural_network import MLPClassifier
+    from sklearn import metrics
+
+    # prepare training and testing data
+    X_train, y_train, X_test, y_test = aggregate_all_splits()
+
+    mlp = MLPClassifier(random_state=0, max_iter=1000).fit(X_train, y_train)
+    print("word2vec (train):", mlp.score(X_train, y_train))
+    print("word2vec (test):", mlp.score(X_test, y_test))
+
+
+def RNN_experiment_torch():
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.optim as optim
+    from torch.utils.data import Dataset, DataLoader
+    from torch.nn.utils.rnn import pad_sequence
+    from sklearn import metrics
+
+    # prepare training and testing data
+    X_train, y_train, X_test, y_test = aggregate_all_splits()
+
+    # convert to torch tensors
+    X_train = torch.from_numpy(X_train)
+    y_train = torch.from_numpy(y_train)
+    X_test = torch.from_numpy(X_test)
+    y_test = torch.from_numpy(y_test)
+
+    # create dataset
+    class FinancialPhraseBankDataset(Dataset):
+        def __init__(self, X, y):
+            self.X = X
+            self.y = y
+
+        def __len__(self):
+            return len(self.y)
+
+        def __getitem__(self, idx):
+            return self.X[idx], self.y[idx]
+
+    # create dataloader
+    train_dataset = FinancialPhraseBankDataset(X_train, y_train)
+    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+
+    # define model
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.fc1 = nn.Linear(300, 100)
+            self.fc2 = nn.Linear(100, 3)
+
+        def forward(self, x):
+            x = F.relu(self.fc1(x))
+            x = self.fc2(x)
+            return x
+
+    net = Net()
+
+    # define loss function and optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+    # train
+    for epoch in range(10):  # loop over the dataset multiple times
+        running_loss = 0.0
+        for i, data in enumerate(train_loader, 0):
+            # get the inputs; data is a list of [inputs, labels]
+            inputs, labels = data
+
+            # zero the parameter gradients
+            optimizer.zero_grad()
+
+            # forward + backward + optimize
+            outputs = net(inputs.float())
+            loss = criterion(outputs, labels.long())
+            loss.backward()
+            optimizer.step()
+
+            # print statistics
+            running_loss += loss.item()
+            if i % 100 == 99:  # print every 100 mini-batches
+                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 100))
