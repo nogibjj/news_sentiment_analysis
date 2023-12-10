@@ -163,7 +163,9 @@ def generate_data_word2vec(df: pd.DataFrame) -> tuple[FloatArray, FloatArray]:
             for _, sentence in enumerate(df.sentence)
         ]
     )
-    y: FloatArray = np.array(map_labels(df))
+    # labels = [-1, 0, 1] seems to be causing an error
+    # y: FloatArray = np.array(map_labels(df))
+    y: FloatArray = np.array(df.label)
     return split_train_test(X, y)
 
 
@@ -275,7 +277,8 @@ def RNN_experiment_torch():
     from sklearn import metrics
 
     # prepare training and testing data
-    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    # X_train, y_train, X_test, y_test = aggregate_all_splits()
+    X_train, y_train, X_test, y_test = etl("sentences_allagree")
 
     # convert to torch tensors
     X_train = torch.from_numpy(X_train)
@@ -297,7 +300,7 @@ def RNN_experiment_torch():
 
     # create dataloader
     train_dataset = FinancialPhraseBankDataset(X_train, y_train)
-    train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     # define model
     class Net(nn.Module):
@@ -329,6 +332,8 @@ def RNN_experiment_torch():
 
             # forward + backward + optimize
             outputs = net(inputs.float())
+            # print(outputs.shape)
+            # print(labels.shape)
             loss = criterion(outputs, labels.long())
             loss.backward()
             optimizer.step()
@@ -337,3 +342,18 @@ def RNN_experiment_torch():
             running_loss += loss.item()
             if i % 100 == 99:  # print every 100 mini-batches
                 print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 100))
+
+    print("Finished Training")
+    # After training, generate predictions on test data
+    X_test = X_test.float()
+    outputs_test = net(X_test)
+    _, predicted = torch.max(outputs_test, 1)
+
+    # Convert tensors to numpy arrays for comparison with sklearn metrics
+    y_test_np = y_test.numpy()
+    predicted_np = predicted.numpy()
+
+    # Now you can use sklearn's metrics to compare y_test_np and predicted_np
+    # For example, to calculate accuracy:
+    accuracy = metrics.accuracy_score(y_test_np, predicted_np)
+    print("Accuracy: ", accuracy)
