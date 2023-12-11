@@ -291,8 +291,8 @@ def RandomForest_experiment(X_train, y_train, X_test, y_test):
     rfc = RandomForestClassifier(random_state=0, max_depth=10, n_estimators=120).fit(
         X_train, y_train
     )
-    print("word2vec (train):", rfc.score(X_train, y_train))
-    print("word2vec (test):", rfc.score(X_test, y_test))
+    # print("word2vec (train):", rfc.score(X_train, y_train))
+    # print("word2vec (test):", rfc.score(X_test, y_test))
 
     return rfc
 
@@ -307,8 +307,8 @@ def GradientBoost_experiment(X_train, y_train, X_test, y_test):
     gbc = GradientBoostingClassifier(
         random_state=0, max_depth=4, n_estimators=30, learning_rate=0.3
     ).fit(X_train, y_train)
-    print("word2vec (train):", gbc.score(X_train, y_train))
-    print("word2vec (test):", gbc.score(X_test, y_test))
+    # print("word2vec (train):", gbc.score(X_train, y_train))
+    # print("word2vec (test):", gbc.score(X_test, y_test))
 
     return gbc
 
@@ -418,7 +418,7 @@ def RNN_experiment_torch():
     # Now you can use sklearn's metrics to compare y_test_np and predicted_np
     # For example, to calculate accuracy:
     accuracy = metrics.accuracy_score(y_test_np, predicted_np)
-    print("Accuracy: ", accuracy)
+    print("word2vec accuracy: ", accuracy)
 
 
 def attention_experiment():
