@@ -2,6 +2,7 @@ import nltk
 import pandas as pd
 import random
 from typing import List, Mapping, Optional, Sequence
+from afinn import Afinn
 
 # import gensim
 import numpy as np
@@ -20,6 +21,8 @@ import gensim.downloader as api
 
 google_news = api.load("word2vec-google-news-300")
 # google_news.save("word2vec-google-news-300.model")
+
+afin = Afinn()
 
 
 # import sentiment_economy_news dataset
@@ -188,6 +191,21 @@ def generate_observation_word2vec(sentence):
     return X
 
 
+def sum_vader_scores(sentence):
+    sent_score = np.sum(np.array([afin.score(word) for word in sentence]))
+    return sent_score
+
+
+def generate_X_vader(df):
+    X = np.array([sum_vader_scores(sentence) for sentence in df["tokenized_sentences"]])
+    return X.reshape(-1, 1)
+
+
+def generate_y_vader(df):
+    y = np.array(df.label).reshape(-1, 1)
+    return y
+
+
 def etl(split):
     """
     Extract, transform, and load financial_phrasebank
@@ -196,6 +214,21 @@ def etl(split):
     df = tokenize_financial_phrasebank(df)
     X_train, y_train, X_test, y_test = generate_data_word2vec(df)
     return X_train, y_train, X_test, y_test
+
+
+def import_all_splits():
+    """
+    Import all splits of financial_phrasebank
+    """
+    df = pd.DataFrame()
+    for split in [
+        "sentences_50agree",
+        "sentences_66agree",
+        "sentences_75agree",
+        "sentences_allagree",
+    ]:
+        df = pd.concat([df, import_data(split)])
+    return df
 
 
 def aggregate_all_splits():
@@ -215,12 +248,12 @@ def aggregate_all_splits():
     return X_train, y_train, X_test, y_test
 
 
-def run_experiment() -> None:
+def run_experiment(X_train, y_train, X_test, y_test) -> None:
     from sklearn.linear_model import LogisticRegression
     from sklearn import metrics
 
     # prepare training and testing data
-    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    # X_train, y_train, X_test, y_test = aggregate_all_splits()
 
     clf = LogisticRegression(random_state=0, max_iter=1000).fit(X_train, y_train)
     print("word2vec (train):", clf.score(X_train, y_train))
@@ -248,34 +281,34 @@ def experiment_gridSearchCV():
     print("Best Params: ", grid_search.best_params_)
 
 
-def RandomForest_experiment():
+def RandomForest_experiment(X_train, y_train, X_test, y_test):
     from sklearn.ensemble import RandomForestClassifier
     from sklearn import metrics
 
     # prepare training and testing data
-    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    # X_train, y_train, X_test, y_test = aggregate_all_splits()
 
     rfc = RandomForestClassifier(random_state=0, max_depth=10, n_estimators=120).fit(
         X_train, y_train
     )
-    print("word2vec (train):", rfc.score(X_train, y_train))
-    print("word2vec (test):", rfc.score(X_test, y_test))
+    # print("word2vec (train):", rfc.score(X_train, y_train))
+    # print("word2vec (test):", rfc.score(X_test, y_test))
 
     return rfc
 
 
-def GradientBoost_experiment():
+def GradientBoost_experiment(X_train, y_train, X_test, y_test):
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn import metrics
 
     # prepare training and testing data
-    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    # X_train, y_train, X_test, y_test = aggregate_all_splits()
 
     gbc = GradientBoostingClassifier(
         random_state=0, max_depth=4, n_estimators=30, learning_rate=0.3
     ).fit(X_train, y_train)
-    print("word2vec (train):", gbc.score(X_train, y_train))
-    print("word2vec (test):", gbc.score(X_test, y_test))
+    # print("word2vec (train):", gbc.score(X_train, y_train))
+    # print("word2vec (test):", gbc.score(X_test, y_test))
 
     return gbc
 
@@ -303,7 +336,7 @@ def RNN_experiment_torch():
 
     # prepare training and testing data
     # X_train, y_train, X_test, y_test = aggregate_all_splits()
-    X_train, y_train, X_test, y_test = etl("sentences_allagree")
+    X_train, y_train, X_test, y_test = aggregate_all_splits()
 
     # convert to torch tensors
     X_train = torch.from_numpy(X_train)
@@ -331,12 +364,16 @@ def RNN_experiment_torch():
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
-            self.fc1 = nn.Linear(300, 100)
-            self.fc2 = nn.Linear(100, 3)
+            self.fc1 = nn.Linear(300, 400)  # First fully connected layer
+            self.fc2 = nn.Linear(400, 200)  # Second fully connected layer
+            self.fc3 = nn.Linear(200, 3)  # Output layer
 
         def forward(self, x):
-            x = F.relu(self.fc1(x))
-            x = self.fc2(x)
+            x = F.relu(self.fc1(x))  # Activation function for the first layer
+            x = torch.sigmoid(
+                self.fc2(x)
+            )  # Sigmoid activation function for the second layer
+            x = self.fc3(x)  # No activation function for the output layer
             return x
 
     net = Net()
@@ -364,9 +401,9 @@ def RNN_experiment_torch():
             optimizer.step()
 
             # print statistics
-            running_loss += loss.item()
-            if i % 100 == 99:  # print every 100 mini-batches
-                print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 100))
+            # running_loss += loss.item()
+            # if i % 100 == 99:  # print every 100 mini-batches
+            #     print("[%d, %5d] loss: %.3f" % (epoch + 1, i + 1, running_loss / 100))
 
     print("Finished Training")
     # After training, generate predictions on test data
@@ -381,4 +418,109 @@ def RNN_experiment_torch():
     # Now you can use sklearn's metrics to compare y_test_np and predicted_np
     # For example, to calculate accuracy:
     accuracy = metrics.accuracy_score(y_test_np, predicted_np)
-    print("Accuracy: ", accuracy)
+    print("word2vec accuracy: ", accuracy)
+
+
+def attention_experiment():
+    """
+    NOT WORKING
+    """
+    import torch
+    from torch import nn, optim
+    from torch.utils.data import DataLoader
+
+    class Attention(nn.Module):
+        def __init__(self, hidden_size):
+            super(Attention, self).__init__()
+            self.hidden_size = hidden_size
+            self.attn = nn.Linear(self.hidden_size * 2, hidden_size)
+            self.v = nn.Parameter(torch.rand(hidden_size))
+
+        def forward(self, hidden, encoder_outputs):
+            timestep = encoder_outputs.size(0)
+            h = hidden.repeat(timestep, 1, 1).transpose(0, 1)
+            encoder_outputs = encoder_outputs.transpose(0, 1)
+            attn_energies = self.score(h, encoder_outputs)
+            return nn.functional.softmax(attn_energies, dim=1).unsqueeze(1)
+
+        def score(self, hidden, encoder_outputs):
+            energy = nn.functional.relu(
+                self.attn(torch.cat([hidden, encoder_outputs], 2))
+            )
+            energy = energy.transpose(1, 2)
+            v = self.v.repeat(encoder_outputs.size(0), 1).unsqueeze(1)
+            energy = torch.bmm(v, energy)
+            return energy.squeeze(1)
+
+    class Net(nn.Module):
+        def __init__(
+            self, input_size=300, hidden_size=400, num_layers=2, num_classes=3
+        ):
+            super(Net, self).__init__()
+            self.hidden_size = hidden_size
+            self.num_layers = num_layers
+            self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
+            self.fc = nn.Linear(hidden_size, num_classes)
+            self.attention = Attention(hidden_size)
+
+        def forward(self, x):
+            h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+            out, _ = self.rnn(x, h0)
+            attn_weights = self.attention(out, out)
+            out = torch.bmm(attn_weights, out)
+            out = out.view(out.size(0), -1)
+            out = self.fc(out)
+            return out
+
+    def run_experiment():
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        X_train, y_train, X_test, y_test = aggregate_all_splits()
+
+        X_train = torch.tensor(X_train).float().to(device)
+        y_train = torch.tensor(y_train).long().to(device)
+
+        train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
+        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+
+        model = Net(input_size=300, hidden_size=400, num_layers=2, num_classes=3)
+        model = model.to(device)
+
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+        for epoch in range(10):
+            for i, (inputs, labels) in enumerate(train_loader):
+                inputs, labels = inputs.to(device), labels.to(device)
+
+                optimizer.zero_grad()
+
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+
+                loss.backward()
+                optimizer.step()
+
+            print(f"Epoch {epoch+1}/{10} Loss: {loss.item()}")
+
+        X_test = torch.tensor(X_test).float().to(device)
+        y_test = torch.tensor(y_test).long().to(device)
+
+        test_dataset = torch.utils.data.TensorDataset(X_test, y_test)
+        test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
+        correct = 0
+        total = 0
+        with torch.no_grad():
+            for inputs, labels in test_loader:
+                inputs, labels = inputs.to(device), labels.to(device)
+                outputs = model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+
+        print(
+            "Accuracy of the network on the test data: %d %%" % (100 * correct / total)
+        )
+
+    run_experiment()
