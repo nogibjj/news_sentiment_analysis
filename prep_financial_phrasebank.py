@@ -188,6 +188,21 @@ def generate_observation_word2vec(sentence):
     return X
 
 
+def sum_vader_scores(sentence):
+    sent_score = np.sum(np.array([afin.score(word) for word in sentence]))
+    return sent_score
+
+
+def generate_X_vader(df):
+    X = np.array([sum_vader_scores(sentence) for sentence in df["tokenized_sentences"]])
+    return X.reshape(-1, 1)
+
+
+def generate_y_vader(df):
+    y = np.array(df.label).reshape(-1, 1)
+    return y
+
+
 def etl(split):
     """
     Extract, transform, and load financial_phrasebank
