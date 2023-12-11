@@ -89,7 +89,10 @@ def clean_text(text):
     # remove stopwords
     stopwords = nltk.corpus.stopwords.words("english")
     text = [word for word in text if word not in stopwords]
-    return text
+    if text == "":
+        pass
+    else:
+        return " ".join(text)
 
 
 # def clean_text(text):
@@ -114,6 +117,8 @@ def tokenize_financial_phrasebank(df):
     """
     # tokenize sentences
     df["tokenized_sentences"] = df["sentence"].apply(clean_text)
+    df = df.loc[df.tokenized_sentences != ""]
+    return df
 
 
 def sum_token_embeddings(
@@ -160,7 +165,7 @@ def generate_data_word2vec(df: pd.DataFrame) -> tuple[FloatArray, FloatArray]:
                     for _, word in enumerate(sentence)
                 ]
             )
-            for _, sentence in enumerate(df.sentence)
+            for _, sentence in enumerate(df.tokenized_sentences)
         ]
     )
     # labels = [-1, 0, 1] seems to be causing an error
@@ -169,12 +174,26 @@ def generate_data_word2vec(df: pd.DataFrame) -> tuple[FloatArray, FloatArray]:
     return split_train_test(X, y)
 
 
+def generate_observation_word2vec(sentence):
+    X: FloatArray = np.array(
+        [
+            sum_token_embeddings(
+                [
+                    google_news[word] if word in google_news else google_news["UNK"]
+                    for _, word in enumerate(sentence)
+                ]
+            )
+        ]
+    )
+    return X
+
+
 def etl(split):
     """
     Extract, transform, and load financial_phrasebank
     """
     df = import_data(split)
-    tokenize_financial_phrasebank(df)
+    df = tokenize_financial_phrasebank(df)
     X_train, y_train, X_test, y_test = generate_data_word2vec(df)
     return X_train, y_train, X_test, y_test
 
@@ -191,7 +210,7 @@ def aggregate_all_splits():
         "sentences_allagree",
     ]:
         df = pd.concat([df, import_data(split)])
-    tokenize_financial_phrasebank(df)
+    df = tokenize_financial_phrasebank(df)
     X_train, y_train, X_test, y_test = generate_data_word2vec(df)
     return X_train, y_train, X_test, y_test
 
@@ -206,6 +225,8 @@ def run_experiment() -> None:
     clf = LogisticRegression(random_state=0, max_iter=1000).fit(X_train, y_train)
     print("word2vec (train):", clf.score(X_train, y_train))
     print("word2vec (test):", clf.score(X_test, y_test))
+
+    return clf
 
 
 def experiment_gridSearchCV():
@@ -240,6 +261,8 @@ def RandomForest_experiment():
     print("word2vec (train):", rfc.score(X_train, y_train))
     print("word2vec (test):", rfc.score(X_test, y_test))
 
+    return rfc
+
 
 def GradientBoost_experiment():
     from sklearn.ensemble import GradientBoostingClassifier
@@ -253,6 +276,8 @@ def GradientBoost_experiment():
     ).fit(X_train, y_train)
     print("word2vec (train):", gbc.score(X_train, y_train))
     print("word2vec (test):", gbc.score(X_test, y_test))
+
+    return gbc
 
 
 def MLP_experiment():
