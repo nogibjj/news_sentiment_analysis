@@ -198,6 +198,21 @@ def etl(split):
     return X_train, y_train, X_test, y_test
 
 
+def import_all_splits():
+    """
+    Import all splits of financial_phrasebank
+    """
+    df = pd.DataFrame()
+    for split in [
+        "sentences_50agree",
+        "sentences_66agree",
+        "sentences_75agree",
+        "sentences_allagree",
+    ]:
+        df = pd.concat([df, import_data(split)])
+    return df
+
+
 def aggregate_all_splits():
     """
     Aggregate all splits of financial_phrasebank
