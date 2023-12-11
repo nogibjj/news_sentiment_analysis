@@ -245,12 +245,12 @@ def aggregate_all_splits():
     return X_train, y_train, X_test, y_test
 
 
-def run_experiment() -> None:
+def run_experiment(X_train, y_train, X_test, y_test) -> None:
     from sklearn.linear_model import LogisticRegression
     from sklearn import metrics
 
     # prepare training and testing data
-    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    # X_train, y_train, X_test, y_test = aggregate_all_splits()
 
     clf = LogisticRegression(random_state=0, max_iter=1000).fit(X_train, y_train)
     print("word2vec (train):", clf.score(X_train, y_train))
@@ -278,12 +278,12 @@ def experiment_gridSearchCV():
     print("Best Params: ", grid_search.best_params_)
 
 
-def RandomForest_experiment():
+def RandomForest_experiment(X_train, y_train, X_test, y_test):
     from sklearn.ensemble import RandomForestClassifier
     from sklearn import metrics
 
     # prepare training and testing data
-    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    # X_train, y_train, X_test, y_test = aggregate_all_splits()
 
     rfc = RandomForestClassifier(random_state=0, max_depth=10, n_estimators=120).fit(
         X_train, y_train
@@ -294,12 +294,12 @@ def RandomForest_experiment():
     return rfc
 
 
-def GradientBoost_experiment():
+def GradientBoost_experiment(X_train, y_train, X_test, y_test):
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn import metrics
 
     # prepare training and testing data
-    X_train, y_train, X_test, y_test = aggregate_all_splits()
+    # X_train, y_train, X_test, y_test = aggregate_all_splits()
 
     gbc = GradientBoostingClassifier(
         random_state=0, max_depth=4, n_estimators=30, learning_rate=0.3
