@@ -2,6 +2,7 @@ import nltk
 import pandas as pd
 import random
 from typing import List, Mapping, Optional, Sequence
+from afinn import Afinn
 
 # import gensim
 import numpy as np
@@ -20,6 +21,8 @@ import gensim.downloader as api
 
 google_news = api.load("word2vec-google-news-300")
 # google_news.save("word2vec-google-news-300.model")
+
+afin = Afinn()
 
 
 # import sentiment_economy_news dataset
