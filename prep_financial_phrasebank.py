@@ -3,8 +3,7 @@ import pandas as pd
 import random
 from typing import List, Mapping, Optional, Sequence
 from afinn import Afinn
-
-# import gensim
+import gensim.downloader as api
 import numpy as np
 from numpy.typing import NDArray
 from download_hf import download_parquet
@@ -17,7 +16,7 @@ This script was specifically written to prepare the financial_phrasebank dataset
     labels range from 0 (negative), 1(neutral), 2 (positive)
     there are 4 datasets based on % agreement between annotators
 """
-import gensim.downloader as api
+
 
 google_news = api.load("word2vec-google-news-300")
 # google_news.save("word2vec-google-news-300.model")
@@ -39,6 +38,9 @@ def import_data(split):
 
 
 from nltk.corpus import wordnet
+
+nltk.download("wordnet")
+nltk.download("stopwords")
 
 
 def Negation(sentence):
