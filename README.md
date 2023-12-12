@@ -15,8 +15,6 @@ Here's how to use it:
 -  `prep_financial_phrasebank.py`: contains the logic to prepare the financial phrasebank dataset as well as a few classifier models
 -  `real_news_classifiers.ipynb`: is a notebook that contains a walkthrough of the real news data extraction, cleaning, embedding, training and testing
 -  `requirements.txt`: contains the libraries required to run the code
--  `synth_data.ipynb`:
--  `synthetic_data.ipynb`:
 -  `Synthetic_model.ipynb`:
 
 
