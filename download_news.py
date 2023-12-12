@@ -2,7 +2,7 @@ import requests
 import datetime
 import pandas as pd
 
-API_KEY = "ac0d8a85ecdd42d095fabea374febda1"
+API_KEY = "<YOUR_API_KEY>"
 
 today = datetime.datetime.now().strftime("%Y-%m-%d")
 
